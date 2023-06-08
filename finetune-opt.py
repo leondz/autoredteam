@@ -64,7 +64,7 @@ import transformers
 from datasets import load_dataset
 
 #data = load_dataset("Abirate/english_quotes")
-with open("tmp_json.jsonl") as tmp_json:
+with open("tmp_json.jsonl", "w") as tmp_json:
     for line in open(sys.argv[1], 'r'):
         record = json.loads(line.strip())
         turn_resp = "<|input|>"+record['prompt']+"<|response|>"+record['response']
@@ -72,16 +72,17 @@ with open("tmp_json.jsonl") as tmp_json:
 
 data = load_dataset("json", data_files = "tmp_json.jsonl", split="train")
 data = data.map(lambda samples: tokenizer(samples['turn_resp']), batched=True)
-r_ds = r_ds.train_test_split(test_size=0.15)
+data = data.train_test_split(test_size=0.001)
 
 trainer = transformers.Trainer(
     model=model, 
     train_dataset=data['train'],
+#    eval_dataset=data['test'],
     args=transformers.TrainingArguments(
         per_device_train_batch_size=4, 
         gradient_accumulation_steps=4,
         warmup_steps=100, 
-        max_steps=200, 
+        max_steps=400, 
         learning_rate=2e-4, 
         fp16=True,
         logging_steps=1, 
@@ -91,3 +92,6 @@ trainer = transformers.Trainer(
 )
 model.config.use_cache = False  # silence the warnings. Please re-enable for inference!
 trainer.train()
+
+trainer.save_model("artopt")
+tokenizer.save_pretrained("artopt")
